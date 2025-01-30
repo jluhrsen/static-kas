@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -50,13 +50,14 @@ func Discover(l *zap.Logger, basePath string) (map[string]*metav1.APIResourceLis
 			concurency <- struct{}{}
 			defer wg.Done()
 			defer func() { <-concurency }()
-			raw, err := ioutil.ReadFile(path)
+			raw, err := os.ReadFile(path)
 			if err != nil {
 				errs.add(fmt.Errorf("failed to read file %s: %w", path, err))
 				return
 			}
 
-			if len(raw) == 0 {
+			if strings.TrimSpace(string(raw)) == "REDACTED" || len(raw) == 0 {
+				l.Warn("Skipping emtpty or redacted file", zap.String("path", path))
 				return
 			}
 
